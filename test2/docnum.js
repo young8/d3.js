@@ -9,14 +9,15 @@ var width = window.innerWidth - margin.left - margin.right;
 var height = 500 - margin.top - margin.bottom + ButtonArea;
 
 var x = d3.scale.ordinal()
-  .rangeRoundBands([0, width], .1);
+  .rangeRoundBands([0, width], .1)
+  //.attr("size","20")
 
 var y = d3.scale.linear()
   .range([height, 0]);
 
 var xAxis = d3.svg.axis()
   .scale(x)
-  .orient("bottom");
+  .orient("bottom")
 
 var yAxis = d3.svg.axis()
   .scale(y)
@@ -34,44 +35,14 @@ d3.csv("DocPerPop2.csv", type, function(error, data) {
   var dkeys = d3.map(data[0]).keys();
   dkeys.shift();
   var ckey = dkeys[0];
+  var color=d3.scale.category20();
+
   x.domain(data.map(function(d) {
     return d.city;
   }));
   y.domain([0, d3.max(data, function(d) {
     return d[dkeys[0]];
   })]);
-
-  svg.append("g")
-    .attr("class", "x axis")
-    .attr("transform", "translate(0," + height + ")")
-    .call(xAxis);
-
-  //Y軸
-  svg.append("g")
-    .attr("class", "y axis")
-    .call(yAxis)
-    .append("text")
-    //.attr("transform", "rotate(-90)")
-    .attr("y", -7)
-    //.attr("dy", ".100em")
-    .style("text-anchor", "top")
-    .style("font-size", "small")
-    .style("font-weight", "bold")
-    .text("10E-5%")
-
-  //グラフ上部のテキスト
-  svg.append("g")
-    .attr("class", "title")
-    .append("text")
-    .attr({
-      id: "title",
-      x: width / 2,
-      "font-size": "20px",
-      "font-weight": "bold",
-      "text-anchor": "middle"
-    })
-    //.style("text-anchor","top")
-    .text(dkeys[0])
 
   svg.selectAll(".bar")
     .data(data)
@@ -87,9 +58,12 @@ d3.csv("DocPerPop2.csv", type, function(error, data) {
     .attr("height", function(d) {
       return height - y(d[dkeys[0]]);
     })
+    .attr("fill",function(d,i){
+      return color(i);
+    })
     .on("mouseover", function(d) {
       d3.select("#dpp")
-        .text(d[ckey])
+        .text(Math.ceil(100000/d[ckey])+"人に一人")
       d3.select("#tooltip")
         .style({
           "visibility": "visible",
@@ -106,24 +80,98 @@ d3.csv("DocPerPop2.csv", type, function(error, data) {
         .style("visibility", "hidden")
     })
 
-  //グラフ下部のテキスト
-  var NumPerRow = Math.floor(width / 175);
-  //var NumPerRow=3
+  svg.append("g")
+    .attr("class", "x axis")
+    .attr("transform", "translate(0," + height + ")")
+    .call(xAxis);
+
+  //Y軸
+  svg.append("g")
+    .attr("class", "y axis")
+    .call(yAxis)
+    .append("text")
+    //.attr("transform", "rotate(-90)")
+    .attr("x", -20)
+    .attr("y", -7)
+    //.attr("dy", ".100em")
+    .style("text-anchor", "top")
+    .style("font-size", "small")
+    .style("font-weight", "bold")
+    .text("医者の人数/人口(10E-5%)")
+
+  //グラフ上部のテキスト
+  svg.append("g")
+    .attr("class", "title")
+    .append("text")
+    .attr({
+      id: "title",
+      x: width / 2,
+      "font-size": "20px",
+      "font-weight": "bold",
+      "text-anchor": "middle"
+    })
+    .text(dkeys[0])
+
+  //グラフ下部の色付け
+  var NumPerRow = Math.floor(width / 170); //長い文字列の長さが170ちょいだから
+  var bwidth = width / NumPerRow;
+  svg.selectAll(".tbg")
+    .data(dkeys)
+    .enter().append("rect")
+    .attr("class", "tbg")
+    .attr("x", function(d, i) {
+      return (i % NumPerRow) * bwidth;
+    })
+    .attr("y", function(d, i) {
+      return Math.floor(i / NumPerRow) * 40 + 480
+    })
+    .attr("width", bwidth-10)
+    .attr("height", 30)
+    .attr("fill", "rgb(0,200,80)")
+    .attr("opacity", 0.5)
+    .on("click", function(d) {
+      var next = d;
+      ckey = next;
+      y.domain([0, d3.max(data, function(d) {
+        return d[next];
+      })]);
+      yAxis.scale(y);
+      svg.select(".y.axis")
+        .transition()
+        .duration(1000)
+        .call(yAxis)
+      svg.select("#title")
+        .data(dkeys)
+        .transition()
+        .text(d)
+      svg.selectAll("rect")
+        .data(data)
+        .call(yAxis)
+        .transition()
+        .attr("y", function(d) {
+          return y(d[next]);
+        })
+        .attr("height", function(d) {
+          return height - y(d[next]);
+        })
+    })
+    //グラフ下部の文字
   svg.selectAll(".text")
     .data(dkeys)
     .enter().append("text")
     .attr("class", "text")
+    .attr("text-anchor", "middle")
     .attr("x", function(d, i) {
-      //return i * width / dkeys.length;
-      return (i % NumPerRow) * width / NumPerRow;
+      return (i % NumPerRow + 0.5) * bwidth; //+0.5はテキストの中央に設置したアンカーをボタンの中央に移動させるため
     })
-    //.attr("y", 500)
     .attr("y", function(d, i) {
       return Math.floor(i / NumPerRow) * 40 + 500
     })
+    .attr("dx","-3")
     .text(function(d) {
       return d;
     })
+    //クリックイベント
     .on("click", function(d) {
       var next = d;
       ckey = next;
