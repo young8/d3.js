@@ -129,6 +129,7 @@ d3.csv("DocPerPop2.csv", type, function(error, data) {
     .attr("height", 30)
     .attr("fill", "rgb(0,200,80)")
     .attr("opacity", 0.5)
+    .style("cursor","pointer")
     .on("click", function(d) {
       var next = d;
       ckey = next;
@@ -160,6 +161,7 @@ d3.csv("DocPerPop2.csv", type, function(error, data) {
     .data(dkeys)
     .enter().append("text")
     .attr("class", "text")
+    .attr("id","tbutton")
     .attr("text-anchor", "middle")
     .attr("x", function(d, i) {
       return (i % NumPerRow + 0.5) * bwidth; //+0.5はテキストの中央に設置したアンカーをボタンの中央に移動させるため
@@ -171,6 +173,8 @@ d3.csv("DocPerPop2.csv", type, function(error, data) {
     .text(function(d) {
       return d;
     })
+    .style("cursor","pointer")
+    .style("font-family","Meiryo")
     //クリックイベント
     .on("click", function(d) {
       var next = d;
