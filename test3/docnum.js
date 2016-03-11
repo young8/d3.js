@@ -3,7 +3,7 @@ var margin = {
   top: 30,
   right: 40,
   bottom: 30 + ButtonArea,
-  left: 40
+  left: 55
 };
 var width = window.innerWidth - margin.left - margin.right;
 var height = 500 - margin.top - margin.bottom + ButtonArea;
@@ -30,7 +30,31 @@ var svg = d3.select("body").append("svg")
   .append("g")
   .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-d3.csv("DocPerPop2.csv", type, function(error, data) {
+function plot_circle(num, x, y,width) {
+  var col=5;
+  var d=width/col;
+  for (var i = 0; i < num; i++) {
+      svg.select("#barg")
+      .selectAll("#circle")
+      .append("circle")
+      .attr("class", "circle")
+      .attr("cx", x+(i%col)*d)
+      //.attr("cy", y+Math.floor(i/col)*d)
+      .attr("cy",height-y-Math.floor(i/col)*d)
+      .attr("r", width/(col*2)-1)
+  }
+}
+function plot_circle2(data,x,y,width){
+  var dlen=10;
+  var col_dis=width/dlen;
+    svg.selectAll("#circle")
+      .remove();
+  for(var i=0;i<dlen;i++){
+    plot_circle(data[i],(x*1.5+col_dis*i),y,col_dis*0.9);
+  }
+}
+
+d3.csv("PopPerDoc.csv", type, function(error, data) {
   if (error) throw error;
   var dkeys = d3.map(data[0]).keys();
   dkeys.shift();
@@ -44,41 +68,47 @@ d3.csv("DocPerPop2.csv", type, function(error, data) {
     return d[dkeys[0]];
   })]);
 
-  svg.selectAll(".bar")
-    .data(data)
-    .enter().append("rect")
-    .attr("class", "bar")
-    .attr("x", function(d) {
-      return x(d.city);
-    })
-    .attr("width", x.rangeBand())
-    .attr("y", function(d) {
-      return y(d[dkeys[0]]);
-    })
-    .attr("height", function(d) {
-      return height - y(d[dkeys[0]]);
-    })
-    .attr("fill", function(d, i) {
-      return color(i);
-    })
-    .on("mouseover", function(d) {
-      d3.select("#dpp")
-        .text(Math.ceil(100000 / d[ckey]) + "人に一人")
-      d3.select("#tooltip")
-        .style({
-          "visibility": "visible",
-          "background-color": "green"
-        })
-    })
-    .on("mousemove", function(d) {
-      return d3.select("#tooltip")
-        .style("top", (event.pageY - 20) + "px")
-        .style("left", (event.pageX + 10) + "px");
-    })
-    .on("mouseout", function() {
-      d3.select("#tooltip")
-        .style("visibility", "hidden")
-    })
+  var barg = svg.append("g")
+    .attr("id", "barg");
+
+  var array=data.map(function(d){return d[ckey]/100;});
+  plot_circle2(array,8,5,width-20);
+
+  // barg.selectAll(".bar")
+  //   .data(data)
+  //   .enter().append("rect")
+  //   .attr("class", "bar")
+  //   .attr("x", function(d) {
+  //     return x(d.city);
+  //   })
+  //   .attr("width", x.rangeBand())
+  //   .attr("y", function(d) {
+  //     return y(d[dkeys[0]]);
+  //   })
+  //   .attr("height", function(d) {
+  //     return height - y(d[dkeys[0]]);
+  //   })
+  //   .attr("fill", function(d, i) {
+  //     return color(i);
+  //   })
+  //   .on("mouseover", function(d) {
+  //     d3.select("#dpp")
+  //       .text(Math.ceil(d[ckey]) + "人に一人")
+  //     d3.select("#tooltip")
+  //       .style({
+  //         "visibility": "visible",
+  //         "background-color": "green"
+  //       })
+  //   })
+  //   .on("mousemove", function(d) {
+  //     return d3.select("#tooltip")
+  //       .style("top", (event.pageY - 20) + "px")
+  //       .style("left", (event.pageX + 10) + "px");
+  //   })
+  //   .on("mouseout", function() {
+  //     d3.select("#tooltip")
+  //       .style("visibility", "hidden")
+  //   })
 
   svg.append("g")
     .attr("class", "x axis")
@@ -122,9 +152,6 @@ d3.csv("DocPerPop2.csv", type, function(error, data) {
     .data(dkeys)
     .enter().append("rect")
     .attr("class", "tbg")
-    .attr("id", function(d,i) {
-      return "rect" + i;
-    })
     .attr("x", function(d, i) {
       return (i % NumPerRow) * bwidth;
     })
@@ -181,16 +208,11 @@ d3.csv("DocPerPop2.csv", type, function(error, data) {
     })
     .style("cursor", "pointer")
     .style("font-family", "Meiryo")
-    .on("mouseover", function(d,i) {
-      d3.select("#rect" + i).attr("fill", "gold");
-    })
-    .on("mouseout",function(d,i){
-      d3.select("#rect"+i).attr("fill","rgb(0,200,80)");
-    })
     //クリックイベント
     .on("click", function(d) {
       var next = d;
       ckey = next;
+      var array=data.map(function(d){return d[ckey]/100;});
       y.domain([0, d3.max(data, function(d) {
         return d[next];
       })]);
@@ -203,16 +225,10 @@ d3.csv("DocPerPop2.csv", type, function(error, data) {
         .data(dkeys)
         .transition()
         .text(d)
-      svg.selectAll("rect")
-        .data(data)
-        .call(yAxis)
+      svg.selectAll("#barg")
         .transition()
-        .attr("y", function(d) {
-          return y(d[next]);
-        })
-        .attr("height", function(d) {
-          return height - y(d[next]);
-        })
+        .duration(1000)
+        .call(plot_circle2(array,8,5,width-20))
     })
 });
 
