@@ -23,8 +23,9 @@ function update(data, text, dtime) {
     .transition()
     .duration(dtime)
     .attr("r", function(d) {
-      return (d * 10)+10;
+      return (d * 2)+10;
     })
+    .attr("fill",function(d,i){return color(i);})
   svg.selectAll("text")
     .text(text)
 }
@@ -48,7 +49,7 @@ d3.csv("累積降水量.csv", type, function(error, data) {
       return i * 100
     })
     .attr("r", function(d) {
-      return d * 10+10;
+      return d * 2+10;
     })
     .attr("fill", function(d, i) {
       return color(i);
@@ -65,7 +66,7 @@ d3.csv("累積降水量.csv", type, function(error, data) {
     array = data.map(function(d) {
       return d[dkeys[i]];
     });
-    dtime = (Math.max.apply(null, array))*30+10;
+    dtime = (Math.max.apply(null, array))*2+5;
     update(array, dkeys[i],dtime);
     i++;
     if(i<klen-1)setTimeout(countup,dtime);
