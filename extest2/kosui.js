@@ -12,7 +12,7 @@ var width = w - margin.left - margin.right;
 var height = h - margin.top - margin.bottom;
 var color = d3.scale.category10();
 //var rightpadding = 600;
-var playflag = 1;
+var start = 200;
 
 var svg = d3.select("body").append("svg")
   .attr("width", width)
@@ -20,11 +20,11 @@ var svg = d3.select("body").append("svg")
   .append("g")
   .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-var svg2 = d3.select("body").append("svg")
-  .attr("width", width / 2)
-  .attr("height", height)
-  .append("h")
-  .attr("transform", "translate(1000,1000)");
+// var svg2 = d3.select("body").append("svg")
+//   .attr("width", width / 2)
+//   .attr("height", height)
+//   .append("h")
+//   .attr("transform", "translate(1000,1000)");
 //.attr("transform","translate("+(margin.left+(width/2))+","+margin.top+")");
 
 var mercator = d3.geo.mercator()
@@ -37,19 +37,40 @@ var mercator = d3.geo.mercator()
 var geopath = d3.geo.path()
   .projection(mercator);
 
-function update(data, text, dtime) {
+var disaster;
+d3.csv("災害.csv", function(error, data) {
+  if (error) throw error;
+  disaster = data.map(function(d) {
+    return d.disaster;
+  });
+});
+
+//var barnum = 13;
+var padding = 5;
+var barwidth;
+var maxbar = height / 8;
+var max = 380;
+var yScale = d3.scale.linear()
+  .domain([0, max])
+  .range([0, maxbar]);
+var dkeys;
+
+function update(array, date, dtime,array2) {
   svg.selectAll(".circle")
-    .data(data)
+    .data(array)
     .transition()
     .duration(dtime)
     .attr("r", function(d) {
-      return (d * 2) + 10;
+      return (d * 1.2) + 10;
     })
     .attr("fill", function(d, i) {
       return color(i);
     })
-  svg.selectAll("text")
-    .text(text)
+  svg.selectAll(".date")
+    .text(date)
+  svg.selectAll(".disaster")
+    .text(disaster[start])
+
 }
 
 //後で各地点のデータをプロットするための座標処理
@@ -65,10 +86,11 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
   makegeo(okayama.features);
   d3.csv("累積降水量.csv", type, function(error, data) {
     if (error) throw error;
-    var dkeys = d3.map(data[0]).keys();
+    dkeys = d3.map(data[0]).keys();
     var fkey = dkeys.shift();
+    var ckey = dkeys[start];
     var array = data.map(function(d) {
-      return d[dkeys[0]];
+      return d[ckey];
     });
     //サークルの描画
     svg.selectAll("circle")
@@ -95,7 +117,16 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
       .attr("x", 20)
       .attr("y", 20)
       .attr("font-size", "20px")
-      .text(dkeys[0])
+      .attr("class", "date")
+      .text(ckey)
+
+    svg.append("text")
+      .attr({
+        x: 100,
+        y: 700,
+        "font-size": "100px",
+        class: "disaster"
+      })
 
     //var button = svg.append("button");
     svg.append("circle")
@@ -104,46 +135,88 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
         cy: 80,
         r: 20,
         "class": "psbutton",
-        fill: "red",
-        val:"play",
+        fill: "green",
+        val: "stop",
         opacity: 0.5
       });
 
     var klen = dkeys.length;
 
     //棒グラフ
-    var maxbar = height / 8;
-    var barwidth = ((width / 2) - margin.left - margin.right) / klen;
-    var max = 380;
-    var yScale = d3.scale.linear()
-      .domain([0, max])
-      .range([0, maxbar]);
-    for (var j = 0; j < klen - 1; j++) {
-      var array = data.map(function(d) {
-        return d[dkeys[j]];
-      });
-      svg.selectAll("#rect")
-        .data(array)
-        .enter()
-        .append("rect")
-        .attr({
-          class: "rect",
-          id: "rect" + j,
-          x: function(d, i) {
-            return j * barwidth;
-          },
-          y: function(d, i) {
-            return (i + 1) * maxbar - yScale(d);
-          },
-          width:barwidth,
-          height: function(d) {
-            return yScale(d);
-          },
-          fill: function(d, i) {
-            return color(i);
-          },
-          "transform": "translate(" + (margin.left + (width / 2)) + "," + margin.top + ")"
+    if (1) {
+      var maxbar = height / 8;
+      var month=dkeys[start].substring(5,6);
+      console.log(month)
+      var ms,me;
+      for(ms=start-1;month===dkeys[ms].substring(5,6);ms--);
+      for(me=start+1;month===dkeys[me].substring(5,6);me++);
+      ms++;me--;
+      var mnum=me-ms+1;
+      console.log(mnum)
+      var barwidth = ((width / 2) - margin.left - margin.right) / mnum;
+      //var max = 380;
+      var yScale = d3.scale.linear()
+        .domain([0, max])
+        .range([0, maxbar]);
+      for (var j = 0; j < mnum ; j++) {
+        var array = data.map(function(d,i) {
+          if(i>=ms&&i<=me)return d[dkeys[j+ms]];
         });
+        svg.selectAll("#rect")
+          .data(array)
+          .enter()
+          .append("rect")
+          .attr({
+            class: "rect",
+            id: "rect" + j,
+            x: function(d, i) {
+              return j * barwidth;
+            },
+            y: function(d, i) {
+              return (i + 1) * maxbar - yScale(d);
+            },
+            width: barwidth,
+            height: function(d) {
+              return yScale(d);
+            },
+            fill: function(d, i) {
+              return color(i);
+            },
+            "transform": "translate(" + (margin.left + (width / 2)) + "," + margin.top + ")"
+          });
+      }
+
+      // var s = start - Math.floor(barnum / 2);
+      // for (var j = 0; j < barnum; j++) {
+      //   var array = data.map(function(d) {
+      //     return d[dkeys[s + j]];
+      //   });
+      //   svg.selectAll(".rect")
+      //     .data(array)
+      //     .enter()
+      //     .append("rect")
+      //     .attr({
+      //       class: "bar",
+      //       id: function(d, i) {
+      //         return "bar" + (s + j);
+      //       },
+      //       x: function(d, i) {
+      //         return j * barwidth;
+      //       },
+      //       y: function(d, i) {
+      //         return (i + 1) * maxbar - yScale(d);
+      //       },
+      //       width: barwidth - padding,
+      //       height: function(d) {
+      //         return yScale(d) + 50;
+      //       },
+      //       fill: function(d, i) {
+      //         return color(i);
+      //       },
+      //       //"transform": "translate(" + (margin.left + (width / 2)) + "," + margin.top + ")"
+      //       "transform": "translate(" + (width / 2) + "," + margin.top + ")"
+      //     });
+      //}
     }
 
     //サークルの大きさ変化部
@@ -152,7 +225,6 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
     var time_id = null;
     var tmp = null;
     var pflag = 0;
-    var start;
     var play = function() {
       time_id = null;
       //var i = start;
@@ -161,8 +233,11 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
         array = data.map(function(d) {
           return d[dkeys[start]];
         });
+        var array2 = data.map(function(d) {
+          return d[dkeys[start + 7]]
+        })
         dtime = (Math.max.apply(null, array)) * 2 + 5;
-        update(array, dkeys[start], dtime);
+        update(array, dkeys[start], dtime, array2);
         start++;
         if (start < klen - 1) time_id = setTimeout(countup, dtime);
       };
@@ -170,7 +245,6 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
     };
 
     function stop() {
-      console.log("check")
       pflag = 1;
       clearTimeout(time_id);
     }
@@ -178,24 +252,23 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
 
     svg.select(".psbutton")
       .on("click", function stop() {
-        var mode=d3.select(this).attr("val");
-        console.log("check")
-        if(mode=="play"){
+        var mode = d3.select(this).attr("val");
+        if (mode == "play") {
           d3.select(this).attr({
-            val:"stop",
-            fill:"green"
+            val: "stop",
+            fill: "green"
           });
           clearTimeout(time_id);
-        }else{
+        } else {
           d3.select(this).attr({
-            val:"play",
-            fill:"red"
+            val: "play",
+            fill: "red"
           })
           play();
         }
       });
-    start = 1;
-    play();
+    //start = 1;
+    //play();
   });
 });
 
