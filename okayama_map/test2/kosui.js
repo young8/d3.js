@@ -4,15 +4,15 @@ var margin = {
   bottom: 30,
   left: 70
 };
-// var w = window.innerWidth;
-// var h = 3500;
-var w = window.parent.screen.width;
-var h = window.parent.screen.height;
+var w = window.innerWidth;
+//var h = window.parent.screen.height;
+var h = window.innerHeight;
 var width = w - margin.left - margin.right;
 var height = h - margin.top - margin.bottom;
 var color = d3.scale.category10();
 //var rightpadding = 600;
-var start = 200;
+var start = 250;
+var vflag = 0;
 
 var svg = d3.select("body").append("svg")
   .attr("width", width)
@@ -25,7 +25,7 @@ var svg = d3.select("body").append("svg")
 //   .attr("height", height)
 //   .append("h")
 //   .attr("transform", "translate(1000,1000)");
-//.attr("transform","translate("+(margin.left+(width/2))+","+margin.top+")");
+// //.attr("transform","translate("+(margin.left+(width/2))+","+margin.top+")");
 
 var mercator = d3.geo.mercator()
   .center([133.746748, 34.543963])
@@ -45,32 +45,22 @@ d3.csv("災害.csv", function(error, data) {
   });
 });
 
-//var barnum = 13;
-var padding = 5;
-var barwidth;
-var maxbar = height / 8;
-var max = 380;
-var yScale = d3.scale.linear()
-  .domain([0, max])
-  .range([0, maxbar]);
-var dkeys;
-
-function update(array, date, dtime,array2) {
+function update(data, text, dtime) {
   svg.selectAll(".circle")
-    .data(array)
+    .data(data)
     .transition()
     .duration(dtime)
     .attr("r", function(d) {
-      return (d * 1.2) + 10;
+      return (d * 2) + 10;
     })
     .attr("fill", function(d, i) {
       return color(i);
     })
   svg.selectAll(".date")
-    .text(date)
+    .text(text)
+
   svg.selectAll(".disaster")
     .text(disaster[start])
-
 }
 
 //後で各地点のデータをプロットするための座標処理
@@ -86,11 +76,10 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
   makegeo(okayama.features);
   d3.csv("累積降水量.csv", type, function(error, data) {
     if (error) throw error;
-    dkeys = d3.map(data[0]).keys();
+    var dkeys = d3.map(data[0]).keys();
     var fkey = dkeys.shift();
-    var ckey = dkeys[start];
     var array = data.map(function(d) {
-      return d[ckey];
+      return d[dkeys[0]];
     });
     //サークルの描画
     svg.selectAll("circle")
@@ -113,13 +102,14 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
       .attr("fill", function(d, i) {
         return color(i);
       });
+    //日付
     svg.append("text")
       .attr("x", 20)
       .attr("y", 20)
       .attr("font-size", "20px")
       .attr("class", "date")
-      .text(ckey)
-
+      .text(dkeys[0])
+      //災害情報
     svg.append("text")
       .attr({
         x: 100,
@@ -127,96 +117,82 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
         "font-size": "100px",
         class: "disaster"
       })
-
-    //var button = svg.append("button");
-    svg.append("circle")
+      //再生停止ボタン
+    svg.append("rect")
       .attr({
-        cx: 40,
-        cy: 80,
-        r: 20,
+        x: 20,
+        y: 80,
+        width: 100,
+        height: 50,
         "class": "psbutton",
+        id: "br",
         fill: "green",
         val: "stop",
         opacity: 0.5
-      });
+      })
+      .style("cursor", "pointer")
+      .append("button");
+    svg.append("text")
+      .attr({
+        x: 20,
+        y: 120,
+        class: "psbutton",
+        id: "bt",
+        "text-anchor": "top",
+        "font-size": 50
+      })
+      .style("cursor", "pointer")
+      .text("再生")
+      .append("button");
 
     var klen = dkeys.length;
 
     //棒グラフ
-    if (1) {
-      var maxbar = height / 8;
-      var month=dkeys[start].substring(5,6);
-      console.log(month)
-      var ms,me;
-      for(ms=start-1;month===dkeys[ms].substring(5,6);ms--);
-      for(me=start+1;month===dkeys[me].substring(5,6);me++);
-      ms++;me--;
-      var mnum=me-ms+1;
-      console.log(mnum)
-      var barwidth = ((width / 2) - margin.left - margin.right) / mnum;
-      //var max = 380;
-      var yScale = d3.scale.linear()
-        .domain([0, max])
-        .range([0, maxbar]);
-      for (var j = 0; j < mnum ; j++) {
-        var array = data.map(function(d,i) {
-          if(i>=ms&&i<=me)return d[dkeys[j+ms]];
+    var maxbar = height / 8;
+    var barwidth = ((width / 2) - margin.left - margin.right) / klen;
+    var max = 380;
+    var yScale = d3.scale.linear()
+      .domain([0, max])
+      .range([0, maxbar]);
+    for (var j = 0; j < klen - 1; j++) {
+      var array = data.map(function(d) {
+        return d[dkeys[j]];
+      });
+      svg.selectAll("#rect")
+        .data(array)
+        .enter()
+        .append("rect")
+        .attr({
+          class: function(d, i) {
+            return "rect" + i;
+          },
+          id: function(d, i) {
+            return "recti" + i + "j" + j;
+          },
+          x: function(d, i) {
+            return j * barwidth;
+          },
+          y: function(d, i) {
+            return (i + 1) * maxbar - yScale(d);
+          },
+          width: function(d) {
+            return Math.floor(d / 3) * barwidth;
+          },
+          height: function(d) {
+            return yScale(d);
+          },
+          fill: function(d, i) {
+            return color(i);
+          },
+          "transform": "translate(" + (margin.left + (width / 2)) + "," + margin.top + ")"
+        })
+        .on("click", function() {
+          if (vflag === 0) {
+            var id = d3.select(this).attr("id").split(/i|j/);
+            vflag = id[1];
+            svg.selectAll(".rect" + vflag).style("visibility", "hidden");
+          }
         });
-        svg.selectAll("#rect")
-          .data(array)
-          .enter()
-          .append("rect")
-          .attr({
-            class: "rect",
-            id: "rect" + j,
-            x: function(d, i) {
-              return j * barwidth;
-            },
-            y: function(d, i) {
-              return (i + 1) * maxbar - yScale(d);
-            },
-            width: barwidth,
-            height: function(d) {
-              return yScale(d);
-            },
-            fill: function(d, i) {
-              return color(i);
-            },
-            "transform": "translate(" + (margin.left + (width / 2)) + "," + margin.top + ")"
-          });
-      }
-
-      // var s = start - Math.floor(barnum / 2);
-      // for (var j = 0; j < barnum; j++) {
-      //   var array = data.map(function(d) {
-      //     return d[dkeys[s + j]];
-      //   });
-      //   svg.selectAll(".rect")
-      //     .data(array)
-      //     .enter()
-      //     .append("rect")
-      //     .attr({
-      //       class: "bar",
-      //       id: function(d, i) {
-      //         return "bar" + (s + j);
-      //       },
-      //       x: function(d, i) {
-      //         return j * barwidth;
-      //       },
-      //       y: function(d, i) {
-      //         return (i + 1) * maxbar - yScale(d);
-      //       },
-      //       width: barwidth - padding,
-      //       height: function(d) {
-      //         return yScale(d) + 50;
-      //       },
-      //       fill: function(d, i) {
-      //         return color(i);
-      //       },
-      //       //"transform": "translate(" + (margin.left + (width / 2)) + "," + margin.top + ")"
-      //       "transform": "translate(" + (width / 2) + "," + margin.top + ")"
-      //     });
-      //}
     }
 
     //サークルの大きさ変化部
@@ -233,11 +209,8 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
         array = data.map(function(d) {
           return d[dkeys[start]];
         });
-        var array2 = data.map(function(d) {
-          return d[dkeys[start + 7]]
-        })
         dtime = (Math.max.apply(null, array)) * 2 + 5;
-        update(array, dkeys[start], dtime, array2);
+        update(array, dkeys[start], dtime);
         start++;
         if (start < klen - 1) time_id = setTimeout(countup, dtime);
       };
@@ -245,25 +218,29 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
     };
 
     function stop() {
+      console.log("check")
       pflag = 1;
       clearTimeout(time_id);
     }
 
 
-    svg.select(".psbutton")
+    svg.selectAll(".psbutton")
       .on("click", function stop() {
-        var mode = d3.select(this).attr("val");
+        var mode = d3.select("#br").attr("val");
+        console.log("check")
         if (mode == "play") {
-          d3.select(this).attr({
+          d3.select("#br").attr({
             val: "stop",
             fill: "green"
           });
+          d3.select("#bt").text("再生")
           clearTimeout(time_id);
         } else {
-          d3.select(this).attr({
+          d3.select("#br").attr({
             val: "play",
             fill: "red"
-          })
+          });
+          d3.select("#bt").text("停止")
           play();
         }
       });
