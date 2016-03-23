@@ -11,7 +11,7 @@ var width = w - margin.left - margin.right;
 var height = h - margin.top - margin.bottom;
 var color = d3.scale.category10();
 //var rightpadding = 600;
-var start = 250;
+var start = 0;
 var vflag = 0;
 
 var svg = d3.select("body").append("svg")
