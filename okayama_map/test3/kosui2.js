@@ -14,8 +14,8 @@ d3.csv("累積降水量t.csv", function(data) {
   var dateExtent = d3.extent(data.map(F('date'))); //dateの最小値・最大値取得
   //var dMax =  d3.max( data.map( F('kasaoka') ) ); //kasaokaの最大値取得
   var wiw = window.innerWidth;
-  var wih = window.innerHeight;
-    //上位グラフ用、margin, scale, axis設定
+  var wih = window.innerHeight * 0.9;
+  //上位グラフ用、margin, scale, axis設定
   var margin = {
     top: 10,
     right: 50,
@@ -35,12 +35,13 @@ d3.csv("累積降水量t.csv", function(data) {
 
   //下位グラフ用、margin, scale, axis設定
   var margin2 = {
-    top: 400,
+    top: height,
     right: 50,
     bottom: 20,
     left: wiw / 2
   };
   var height2 = wih / 2 - margin2.top - margin2.bottom;
+  console.log(height2)
   var x2Scale = d3.time.scale()
     .domain(xScale.domain())
     .range([0, width]);
@@ -66,7 +67,7 @@ d3.csv("累積降水量t.csv", function(data) {
   //ステージ作成
   var svg = d3.select("body").append("svg")
     .attr("width", width + margin.left + margin.right)
-    .attr("height", height + width / 2 + margin.top + margin.bottom);
+    .attr("height", wih);
 
   //フォーカス時の上位グラフの表示位置調整のためにクリップパスを作成
   svg.append("defs").append("clipPath")
@@ -89,6 +90,7 @@ d3.csv("累積降水量t.csv", function(data) {
     .attr("clip-path", "url(#clip)") //クリップパスを適用
     .attr("d", area)
     .attr("fill", "blue")
+    .attr("class", "superg")
 
   focus.append("g") //x目盛軸
     .attr("class", "x axis")
@@ -104,6 +106,7 @@ d3.csv("累積降水量t.csv", function(data) {
     .datum(data)
     .attr("d", area2)
     .attr("fill", "blue")
+    .attr("class", "subg")
 
   context.append("g") //下位x目盛軸
     .attr("class", "x axis")
@@ -130,14 +133,77 @@ d3.csv("累積降水量t.csv", function(data) {
     .attr("fill", "green")
     .attr("opacity", 0.2)
 
-
   function brushed() {
-    console.log(brush.extent());
     xScale.domain(brush.empty() ? x2Scale.domain() : brush.extent()); //選択されたデータセットの範囲をxScaleのdomainに反映
     focus.select("path").attr("d", area); //上位グラフアップデート
     focus.select(".x.axis").call(xAxis); //上位x軸アップデート
   }
+  var rw = (wih - height - height2 - 200) / 2.3;
+  if (rw > (width / 4.5)) rw = width / 4.5;
+  var rp = rw * 0.2;
+  var button = svg.append("g")
+    .attr("class", "button")
+    .attr("transform", "translate(" + margin2.left + "," + (height + height2 + 200) + ")");
+  button.selectAll("rect")
+    .data(dkeys)
+    .enter()
+    .append("rect")
+    .attr({
+      x: function(d, i) {
+        return (i % 4) * (rw + rp);
+      },
+      y: function(d, i) {
+        return Math.floor(i / 4) * (rw + rp);
+      },
+      class: "button",
+      id: function(d) {
+        return d;
+      },
+      width: rw,
+      height: rw,
+      fill: "rgb(60, 230, 0)",
+      opacity: 0.8
+    })
+    .style("cursor", "pointer")
+    .on("click", function(d) {
+      update(d);
+    })
+  button.selectAll("#btext")
+    .data(dkeys)
+    .enter()
+    .append("text")
+    .attr({
+      x: function(d, i) {
+        return (i % 4) * (rw + rp);
+      },
+      y: function(d, i) {
+        return Math.floor(i / 4) * (rw + rp) + rw * 0.64;
+      },
+      class: "button",
+      id: "btext",
+      "font-size": rw / 2,
+      "fill": "rgb(27, 30, 43)"
+    })
+    .text(function(d) {
+      return d;
+    })
+    .style("cursor", "pointer")
+    .on("click", function(d) {
+      update(d);
+    })
 
+  function update(key) {
+    area.y1(F(key, yScale));
+    area2.y1(F(key, y2Scale));
+    focus.selectAll(".superg")
+      .transition()
+      .duration(1650)
+      .attr("d", area)
+      .attr("fill", "blue")
+    context.selectAll(".subg") //下位グラフ
+      .attr("d", area2)
+      .attr("fill", "blue")
+  }
 });
 
 
