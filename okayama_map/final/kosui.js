@@ -1,12 +1,13 @@
 var margin = {
   top: 30,
-  right: 40,
-  bottom: 30,
-  left: 70
+  right: 50,
+  bottom: 230,
+  left: 50
 };
 var w = 1300;
-//var h = window.parent.screen.height;
-var h = 900;
+// var w = window.parent.screen.width;
+// var h = window.parent.screen.height;
+var h = 1000;
 var width = w - margin.left - margin.right;
 var height = h - margin.top - margin.bottom;
 var color = d3.scale.category10();
@@ -30,7 +31,7 @@ var svg = d3.select("body").append("svg")
 var mercator = d3.geo.mercator()
 .center([133.837613,34.94759])
 // .translate([(w - rightpadding)*0.3, h*0.68])
-.translate([w/2-300, h/2-120])
+.translate([width/2, height/2-100])
 .scale(30000);
 
 // geojsonからpath要素を作るための設定。
@@ -39,6 +40,7 @@ var geopath = d3.geo.path()
 
 var disaster = [];
 var place = [];
+var fact = [];
 d3.csv("saigai.csv", function(error, data) {
   if (error) throw error;
   disaster = data.map(function(d) {
@@ -47,7 +49,14 @@ d3.csv("saigai.csv", function(error, data) {
   place = data.map(function(d) {
     return d.place;
   });
+  fact = data.map(function(d) {
+    return d.fact;
+  });
 });
+
+var rscale = d3.scale.linear()
+.domain([0,400])
+.range([5,100])
 
 function update(data, text, dtime) {
   svg.selectAll(".circle")
@@ -55,8 +64,9 @@ function update(data, text, dtime) {
   .transition()
   .duration(dtime)
   .attr("r", function(d) {
-    var r = (d * 2) + 7;
-    if(r > 100)return 100;
+    // var r = (d * 2) + 5;
+    // if(r > 100)return 100;
+    var r = rscale(d);
     return r;
   })
   .attr("fill", function(d, i) {
@@ -74,9 +84,21 @@ function update(data, text, dtime) {
   svg.selectAll(".place")
   .text(function(){
     if(place[start] != ""){
-      return place[start]
+      return "場所："+place[start]
     }
   })
+  svg.selectAll(".fact")
+  .text(function(){
+    if(fact[start] != ""){
+      return "原因："+fact[start]
+    }
+  })
+
+  d3.selectAll(".ldata")
+  .text(function(d,i){
+    return data[i] + "mm";
+  })
+
 }
 
 //後で各地点のデータをプロットするための座標処理
@@ -120,7 +142,7 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
       return positions[i][1];
     })
     .attr("r", function(d) {
-      return d*2+7;
+      return rscale(d);
     })
     .attr("fill", function(d, i) {
       return color(i);
@@ -130,10 +152,30 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
     })
     .attr("fill-opacity","0.5");
 
+    svg.append("g").selectAll("circle")
+    .data(array)
+    .enter()
+    .append("circle")
+    .attr("class", "circle")
+    .attr("cx", function(d, i) {
+      return positions[i][0];
+    })
+    .attr("cy", function(d, i) {
+      //return i * 100
+      return positions[i][1];
+    })
+    .attr("r", function(d) {
+      return 5;
+    })
+    .attr("fill", function(d, i) {
+      return color(i);
+    })
+    .attr("fill-opacity","0.8");
+
     var legendg = svg.append("g")
     .attr({
       class:"legend",
-      transform:"translate(700,100)"
+      transform:"translate(700,200)"
     });
 
     legendg.selectAll("circle")
@@ -172,23 +214,62 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
     .style("font-weight","bold")
     .text(function(d){return d;})
 
+    legendg.append("g").selectAll("text")
+    .data(city)
+    .enter()
+    .append("text")
+    .attr("class","ldata")
+    .attr("x",140)
+    .attr("y",function(d, i) {
+      //return i * 100
+      return i*25;
+    })
+    .attr("dy",5)
+    .attr("text-anchor","end")
+    .style("font-family","メイリオ")
+    .style("font-weight","bold")
+
+
     //日付
     svg.append("text")
-    .attr("x", 20)
+    .attr("x", 100)
     .attr("y", 20)
     .attr("font-size", "50px")
     .attr("class", "date")
     .text(dkeys[0])
     .style("font-family","Century Gothic")
 
+    svg.append("rect")
+    .attr({
+      x:380,
+      y:-20,
+      width:550,
+      height:120,
+      rx:20,
+      ry:20,
+      fill:"rgba(255,0,0,0.1)",
+      stroke:"red",
+
+    })
 
 
     //災害情報
     svg.append("text")
     .attr({
-      x: 350,
-      y: 20,
-      "font-size": "30px",
+      x: 400,
+      y: 10,
+      "font-size": "25px",
+      fill: "black",
+    })
+    .style("font-family","メイリオ")
+    .style("font-weight","bold")
+    .text("災害発生情報")
+
+    svg.append("text")
+    .attr({
+      x: 400,
+      y: 40,
+      "font-size": "23px",
       fill: "red",
       class: "disaster"
     })
@@ -196,19 +277,27 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
     .style("font-weight","bold")
     svg.append("text")
     .attr({
-      x: 350,
-      y: 50,
-      "font-size": "25px",
+      x: 400,
+      y: 70,
+      "font-size": "20px",
       fill: "red",
       class: "place"
     })
     .style("font-style","italic")
-
+    svg.append("text")
+    .attr({
+      x: 400,
+      y: 95,
+      "font-size": "20px",
+      fill: "red",
+      class: "fact"
+    })
+    .style("font-style","italic")
     //再生停止ボタン
     var contg = svg.append("g")
     .attr({
       class:"control",
-      transform:"translate(20,80)"
+      transform:"translate(200,80)"
     });
 
     contg.append("circle")
@@ -257,6 +346,32 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
       opacity:0.8
     })
     .style("cursor", "pointer")
+
+
+    contg.append("text")
+    .attr({
+      x:-90,
+      y:30,
+      "font-size":30
+    })
+    .text("before")
+    .style("cursor","pointer")
+    .on("click",function(){
+      start=start-2;
+      playonce()
+    })
+    contg.append("text")
+    .attr({
+      x:60,
+      y:30,
+      "font-size":30
+    })
+    .text("next")
+    .style("cursor","pointer")
+    .on("click",function(){
+
+      playonce()
+    })
     // contg.append("text")
     // .attr({
     //   x: 0,
@@ -334,12 +449,24 @@ d3.json("map/okayamaken.geojson", function(error, okayama) {
         array = data.map(function(d) {
           return d[dkeys[start]];
         });
+
         dtime = (Math.max.apply(null, array)) * 2 + 5;
         update(array, dkeys[start], dtime);
         start++;
         if (start < klen - 1) time_id = setTimeout(countup, dtime);
       };
       countup();
+    };
+
+    var playonce = function() {
+      time_id = null;
+      //var i = start;
+      var array, max, dtime;
+      array = data.map(function(d) {
+        return d[dkeys[start]];
+      });
+      update(array, dkeys[start], 500);
+      start++;
     };
 
     function stop() {
